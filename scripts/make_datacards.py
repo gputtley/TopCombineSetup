@@ -26,23 +26,15 @@ if input_folder_run3 is not None and not os.path.exists(input_folder_run3):
 output_folder = args.output
 if not os.path.exists(output_folder):
   os.makedirs(output_folder)
-else:
-  os.system(f"rm -rf {output_folder}/datacard.txt")
-  os.system(f"rm -rf {output_folder}/shapes.root")
-  if os.path.exists(f"{output_folder}/ws.root"):
-    os.remove(f"{output_folder}/ws.root")
-
-
-ch = CombineHarvester()
 
 analysis = ['TopMass']
-era_tags = []
+era_tags = ["inc"]
+cats = []
 if input_folder_run2 is not None:
-  era_tags.append("Run2")
+  cats.append((0, "Run2"))
 if input_folder_run3 is not None:
-  era_tags.append("Run3")
+  cats.append((1, "Run3"))
 chn = ["inc"]
-cats = [(0, "inc")]
 
 bkg_procs = [
   "Other",
@@ -63,18 +55,18 @@ mass_shifts = [
 ]
 
 # Set up the inputs
+ch = CombineHarvester()
 ch.AddObservations(['*'], analysis, era_tags, chn, cats)
-ch.cp().process(["data_obs"]).ForEachObs(lambda obs: obs.set_process("Data"))
 ch.AddProcesses(['*'], analysis, era_tags, chn, bkg_procs, cats, False)
 ch.AddProcesses(mass_shifts, analysis, era_tags, chn, sig_procs, cats, True)
 
 # Add the inputs
 if input_folder_run2 is not None:
-  ch.cp().channel(chn).era(["Run2"]).process(bkg_procs).ExtractShapes(input_folder_run2, "$PROCESS", "$PROCESS_$SYSTEMATIC")
-  ch.cp().channel(chn).era(["Run2"]).process(sig_procs).ExtractShapes(input_folder_run2, "$PROCESS_$MASS_GeV", "$PROCESS_$MASS_GeV_$SYSTEMATIC")
+  ch.cp().bin(["Run2"]).process(bkg_procs).ExtractShapes(input_folder_run2, "$PROCESS", "$PROCESS_$SYSTEMATIC")
+  ch.cp().bin(["Run2"]).process(sig_procs).ExtractShapes(input_folder_run2, "$PROCESS_$MASS_GeV", "$PROCESS_$MASS_GeV_$SYSTEMATIC")
 if input_folder_run3 is not None:
-  ch.cp().channel(chn).era(["Run3"]).process(bkg_procs).ExtractShapes(input_folder_run3, "$PROCESS", "$PROCESS_$SYSTEMATIC")
-  ch.cp().channel(chn).era(["Run3"]).process(sig_procs).ExtractShapes(input_folder_run3, "$PROCESS_$MASS_GeV", "$PROCESS_$MASS_GeV_$SYSTEMATIC")
+  ch.cp().bin(["Run3"]).process(bkg_procs).ExtractShapes(input_folder_run3, "$PROCESS", "$PROCESS_$SYSTEMATIC")
+  ch.cp().bin(["Run3"]).process(sig_procs).ExtractShapes(input_folder_run3, "$PROCESS_$MASS_GeV", "$PROCESS_$MASS_GeV_$SYSTEMATIC")
 
 # Auto-rebinning
 rebin = AutoRebin()

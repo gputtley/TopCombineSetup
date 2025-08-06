@@ -21,12 +21,13 @@ cd TopCombineSetup
 
 ## Making datacards
 ```bash
-inputrun2="/afs/cern.ch/work/g/guttley/private/top_reco/AnalysisConfigs/plots/050825_run2_stat_only/datacard_CombinedSubJets_mass.root"
+inputrun2="/afs/cern.ch/work/g/guttley/private/top_reco/AnalysisConfigs/plots/250725_run2_datacards/datacard_CombinedSubJets_mass.root"
+inputrun3="/afs/cern.ch/work/g/guttley/private/top_reco/AnalysisConfigs/plots/250725_run3_datacards/datacard_CombinedSubJets_mass.root"
 outputdir="output/060825"
 ```
 
 ```bash
-python3 scripts/make_datacards.py --input-run2="${inputrun2}" --output="${outputdir}"
+python3 scripts/make_datacards.py --input-run2="${inputrun2}" --input-run3="${inputrun3}" --output="${outputdir}"
 ```
 
 ## Making workspace

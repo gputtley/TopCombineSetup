@@ -10,6 +10,10 @@
 *.userosscache
 *.sln.docstates
 *.env
+higgsCombine*
+combine_logger*
+output*
+.*
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

@@ -21,13 +21,14 @@ cd TopCombineSetup
 
 ## Making datacards
 ```bash
-inputrun2="/afs/cern.ch/work/g/guttley/private/top_reco/AnalysisConfigs/plots/250725_run2_datacards/datacard_CombinedSubJets_mass.root"
-inputrun3="/afs/cern.ch/work/g/guttley/private/top_reco/AnalysisConfigs/plots/250725_run3_datacards/datacard_CombinedSubJets_mass.root"
+inputdir="/afs/cern.ch/work/g/guttley/private/top_reco/AnalysisConfigs/plots/"
+years=("2016_PreVFP" "2016_PostVFP" "2017" "2018" "2022_preEE" "2022_postEE" "2023_preBPix" "2023_postBPix")
+dcinput=""; for year in "${years[@]}"; do dcinput+="Year_${year}:${inputdir}110825_${year}_datacards/datacard_CombinedSubJets_mass.root,"; done; dcinput="${dcinput%,}"
 outputdir="output/060825"
 ```
 
 ```bash
-python3 scripts/make_datacards.py --input-run2="${inputrun2}" --input-run3="${inputrun3}" --output="${outputdir}"
+python3 scripts/make_datacards.py --input="${dcinput}" --output="${outputdir}"
 ```
 
 ## Making workspace
@@ -44,3 +45,16 @@ pushd "${outputdir}"; combine -M MultiDimFit -d "ws.root" -t -1 --setParameters 
 ```bash
 scripts/plot1DScan.py "${outputdir}/higgsCombine_TopMassScan.MultiDimFit.mH120.root" -o ${outputdir}/scan --POI mt --translate="config/translate.json" --main-label="Expected" --scale-POI=0.1
 ```
+
+## Run impacts
+```bash
+pushd "${outputdir}"; combineTool.py -M Impacts -d "ws.root" -t -1 -m 172.5 --setParameters "mt=1725,r=1" --redefineSignalPOIs "mt" --setParameterRanges "mt=1670,1780" --doInitialFit -n "TopMassImpacts"; popd
+pushd "${outputdir}"; combineTool.py -M Impacts -d "ws.root" -t -1 -m 172.5 --setParameters "mt=1725,r=1" --redefineSignalPOIs "mt" --setParameterRanges "mt=1670,1780" --doFits -n "TopMassImpacts"; popd
+pushd "${outputdir}"; combineTool.py -M Impacts -d "ws.root" -t -1 -m 172.5 --setParameters "mt=1725,r=1" --redefineSignalPOIs "mt" --setParameterRanges "mt=1670,1780" -o impacts.json -n "TopMassImpacts"; popd
+```
+
+## Plot impacts
+```bash
+plotImpacts.py -i "${outputdir}/impacts.json" -o "${outputdir}/impacts" --POI mt
+```
+

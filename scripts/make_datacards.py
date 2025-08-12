@@ -8,32 +8,29 @@ import numpy as np
 from argparse import ArgumentParser
 
 description = '''This script makes datacards with CombineHarvester.'''
-parser = ArgumentParser(prog="make_datacards",description=description,epilog="Success!")
-parser.add_argument("--input-run2", type=str, help="Input folder with root files for Run2", default=None)
-parser.add_argument("--input-run3", type=str, help="Input folder with root files for Run3", default=None)
+parser = ArgumentParser(prog="make_datacards", description=description,epilog="Success!")
+parser.add_argument("--input", type=str, help="Dictionary formatted categories and root files", default=None)
 parser.add_argument("--output", type=str, help="Output folder for datacards", default="output")
 args = parser.parse_args()
 
-input_folder_run2 = args.input_run2
-input_folder_run3 = args.input_run3
-if input_folder_run2 is None and input_folder_run3 is None:
-  raise ValueError("Please provide one of --input-run2 or --input-run3 arguments with valid paths.")
-if input_folder_run2 is not None and not os.path.exists(input_folder_run2):
-  raise FileNotFoundError(f"Input folder for Run2 not found: {input_folder_run2}")
-if input_folder_run3 is not None and not os.path.exists(input_folder_run3):
-  raise FileNotFoundError(f"Input folder for Run3 not found: {input_folder_run3}")
-
 output_folder = args.output
 if not os.path.exists(output_folder):
-  os.makedirs(output_folder)
+  os.makedirs(output_folder)#
+
+if args.input is None:
+  raise ValueError("Please provide the --input argument with a valid path to the input dictionary.")
 
 analysis = ['TopMass']
 era_tags = ["inc"]
 cats = []
-if input_folder_run2 is not None:
-  cats.append((0, "Run2"))
-if input_folder_run3 is not None:
-  cats.append((1, "Run3"))
+input_folders = []
+for cat_ind, cat_info in enumerate(args.input.split(',')):
+  cat_name, input_folder = cat_info.split(':')
+  if not os.path.exists(input_folder):
+    raise FileNotFoundError(f"Input folder not found: {input_folder}")
+  input_folders.append(input_folder)
+  cats.append((cat_ind, cat_name))
+cat_names = [cat[1] for cat in cats]
 chn = ["inc"]
 
 bkg_procs = [
@@ -47,9 +44,11 @@ sig_procs = [
 mass_shifts = [
   "1665",
   "1695",
+  "1705",
   "1715",
   "1725",
   "1735",
+  "1745",
   "1755",
   "1785",
 ]
@@ -60,28 +59,81 @@ ch.AddObservations(['*'], analysis, era_tags, chn, cats)
 ch.AddProcesses(['*'], analysis, era_tags, chn, bkg_procs, cats, False)
 ch.AddProcesses(mass_shifts, analysis, era_tags, chn, sig_procs, cats, True)
 
+# Add systematics
+jec_systs = {
+  "AbsoluteMPFBias": {"Correlation" : 1},
+  "AbsoluteScale": {"Correlation" : 1},
+  "AbsoluteStat": {"Correlation" : 0},
+  "FlavorQCD": {"Correlation" : 1},
+  "Fragmentation": {"Correlation" : 1},
+  "PileUpDataMC": {"Correlation" : 1},
+  "PileUpPtBB": {"Correlation" : 1},
+  "PileUpPtEC1": {"Correlation" : 1},
+  "PileUpPtEC2": {"Correlation" : 1},
+  "PileUpPtHF": {"Correlation" : 1},
+  "PileUpPtRef": {"Correlation" : 1},
+  "RelativeFSR": {"Correlation" : 1},
+  "RelativePtBB": {"Correlation" : 1},
+  "RelativePtEC1": {"Correlation" : 0},
+  "RelativePtEC2": {"Correlation" : 0},
+  "RelativePtHF": {"Correlation" : 1},
+  "RelativeBal": {"Correlation" : 1},
+  "RelativeSample": {"Correlation" : 0},
+  "RelativeStatEC": {"Correlation" : 0},
+  "RelativeStatFSR": {"Correlation" : 0},
+  "RelativeStatHF": {"Correlation" : 0},
+  "SinglePionECAL": {"Correlation" : 1},
+  "SinglePionHCAL": {"Correlation" : 1},
+  "TimePtEta": {"Correlation" : 0},
+}
+
+years = ["2016_PreVFP", "2016_PostVFP", "2017", "2018", "2022_preEE", "2022_postEE", "2023_preBPix", "2023_postBPix"]
+
+for syst, props in jec_systs.items():
+  if props["Correlation"] == 1 or props["Correlation"] == 0.5:
+    ch.cp().bin(cat_names).process(bkg_procs).AddSyst(ch, syst, "shape", SystMap()(1.0))
+    ch.cp().bin(cat_names).process(sig_procs).AddSyst(ch, syst, "shape", SystMap()(1.0))
+  if props["Correlation"] == 0 or props["Correlation"] == 0.5:
+    for yr in years:
+      if f"Year_{yr}" in cat_names:
+        ch.cp().bin([f"Year_{yr}"]).process(bkg_procs).AddSyst(ch, f"{syst}_{yr}", "shape", SystMap()(1.0))
+        ch.cp().bin([f"Year_{yr}"]).process(sig_procs).AddSyst(ch, f"{syst}_{yr}", "shape", SystMap()(1.0))
+
 # Add the inputs
-if input_folder_run2 is not None:
-  ch.cp().bin(["Run2"]).process(bkg_procs).ExtractShapes(input_folder_run2, "$PROCESS", "$PROCESS_$SYSTEMATIC")
-  ch.cp().bin(["Run2"]).process(sig_procs).ExtractShapes(input_folder_run2, "$PROCESS_$MASS_GeV", "$PROCESS_$MASS_GeV_$SYSTEMATIC")
-if input_folder_run3 is not None:
-  ch.cp().bin(["Run3"]).process(bkg_procs).ExtractShapes(input_folder_run3, "$PROCESS", "$PROCESS_$SYSTEMATIC")
-  ch.cp().bin(["Run3"]).process(sig_procs).ExtractShapes(input_folder_run3, "$PROCESS_$MASS_GeV", "$PROCESS_$MASS_GeV_$SYSTEMATIC")
+for cat_ind, cat_name in cats:
+  input_folder = input_folders[cat_ind]
+  ch.cp().bin([cat_name]).process(bkg_procs).ExtractShapes(input_folders[cat_ind], "$PROCESS", "$PROCESS_$SYSTEMATIC")
+  ch.cp().bin([cat_name]).process(sig_procs).ExtractShapes(input_folders[cat_ind], "$PROCESS_$MASS_GeV", "$PROCESS_$MASS_GeV_$SYSTEMATIC")
 
 # Auto-rebinning
 rebin = AutoRebin()
 rebin.SetBinThreshold(0)
-rebin.SetBinUncertFraction(0.2)
+rebin.SetBinUncertFraction(0.15)
 rebin.SetRebinMode(1)
 rebin.SetPerformRebin(True)
 rebin.SetVerbosity(1) 
 rebin.Rebin(ch,ch)
 
+# Scale all signal to 1725 yield
+class GetRate:
+  def __init__(self):
+    self.rates = {}
+  def __call__(self, proc):
+    self.rates[proc.mass()] = proc.rate()
+for cat_ind, cat_name in cats:
+  get_rate = GetRate()
+  ch.cp().bin([cat_name]).process(sig_procs).ForEachProc(get_rate)
+  def set_rate(proc): 
+    proc.set_rate(proc.rate() * get_rate.rates["1725"] / get_rate.rates[proc.mass()])
+  ch.cp().bin([cat_name]).process(sig_procs).ForEachProc(set_rate)
+
+
 # Print histograms
 def print_histogram(proc):
   h = proc.shape()
-  if h:
+  if h:  
     h.Print("all")
+    
 ch.ForEachProc(print_histogram)
 ch.ForEachObs(print_histogram)
 
@@ -90,11 +142,11 @@ workspace_name = "workspace"
 ws = ROOT.RooWorkspace(workspace_name, workspace_name)
 
 # Define the morphing variable
-MH = ROOT.RooRealVar("mt", "Top mass", float(mass_shifts[0]), float(mass_shifts[-1]))
+mt = ROOT.RooRealVar("mt", "Top mass", float(mass_shifts[0]), float(mass_shifts[-1]))
 
 # Add the morphing variable to the workspace
 for proc in sig_procs:
-  BuildCMSHistFuncFactory(ws, ch, MH, proc)
+  BuildCMSHistFuncFactory(ws, ch, mt, proc)
 
 # Add the workspace to CB
 ch.AddWorkspace(ws, True)
@@ -103,15 +155,11 @@ ch.cp().backgrounds().ExtractPdfs(ch, workspace_name, "$BIN_$PROCESS_morph")
 ch.cp().ExtractData(workspace_name, "$BIN_data_obs")
 
 # Add MC stats
-ch.cp().SetAutoMCStats(ch, 10.0, 0, 1)
+ch.SetAutoMCStats(ch, 10., 1, 1)
 
 # Write the datacards
 datacardtxt  = f"{output_folder}/datacard.txt"
 datacardroot = f"{output_folder}/shapes.root"
-if os.path.exists(datacardtxt):
-  os.remove(datacardtxt)
-if os.path.exists(datacardroot):
-  os.remove(datacardroot)
 writer = CardWriter(datacardtxt,datacardroot)
 writer.SetVerbosity(1)
 writer.SetWildcardMasses([])

@@ -23,7 +23,7 @@ cd TopCombineSetup
 ```bash
 inputdir="/afs/cern.ch/work/g/guttley/private/top_reco/AnalysisConfigs/plots/"
 years=("2016_PreVFP" "2016_PostVFP" "2017" "2018" "2022_preEE" "2022_postEE" "2023_preBPix" "2023_postBPix")
-dcinput=""; for year in "${years[@]}"; do dcinput+="Year_${year}:${inputdir}110825_${year}_datacards/datacard_CombinedSubJets_mass.root,"; done; dcinput="${dcinput%,}"
+dcinput=""; for year in "${years[@]}"; do dcinput+="Year_${year}:${inputdir}110825_${year}_datacards_syst_inc/datacard_CombinedSubJets_mass.root,"; done; dcinput="${dcinput%,}"
 outputdir="output/060825"
 ```
 

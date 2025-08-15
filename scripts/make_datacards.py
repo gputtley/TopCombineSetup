@@ -5,6 +5,7 @@ from CombineHarvester.CombineTools.ch import CombineHarvester, SystMap, CardWrit
 from CombineHarvester.CombinePdfs.morphing import BuildCMSHistFuncFactory
 from ROOT import RooWorkspace, RooRealVar
 import numpy as np
+import yaml
 from argparse import ArgumentParser
 
 description = '''This script makes datacards with CombineHarvester.'''
@@ -34,7 +35,7 @@ cat_names = [cat[1] for cat in cats]
 chn = ["inc"]
 
 bkg_procs = [
-  "Other",
+  #"Other",
   "ST",
   "WJ"
 ]
@@ -86,9 +87,7 @@ jec_systs = {
   "SinglePionHCAL": {"Correlation" : 1},
   "TimePtEta": {"Correlation" : 0},
 }
-
 years = ["2016_PreVFP", "2016_PostVFP", "2017", "2018", "2022_preEE", "2022_postEE", "2023_preBPix", "2023_postBPix"]
-
 for syst, props in jec_systs.items():
   if props["Correlation"] == 1 or props["Correlation"] == 0.5:
     ch.cp().bin(cat_names).process(bkg_procs).AddSyst(ch, syst, "shape", SystMap()(1.0))
@@ -114,6 +113,24 @@ rebin.SetPerformRebin(True)
 rebin.SetVerbosity(1) 
 rebin.Rebin(ch,ch)
 
+# Get bins and write to yaml file
+class GetBins:
+  def __init__(self):
+    self.bins = {}
+  def __call__(self, proc):
+    hist = proc.shape()
+    if hist:  
+      hist = proc.shape()
+      bins = [hist.GetXaxis().GetBinLowEdge(i) for i in range(1, hist.GetXaxis().GetNbins()+2)]
+      self.bins[proc.bin()] = bins
+get_bins = GetBins()
+ch.cp().ForEachProc(get_bins)
+save_bins = {}
+for k, v in get_bins.bins.items():
+  save_bins[k] = ",".join(map(str, v))
+with open(f"{args.output}/bins.yaml", "w") as f:
+  yaml.dump(save_bins, f)
+
 # Scale all signal to 1725 yield
 class GetRate:
   def __init__(self):
@@ -126,7 +143,6 @@ for cat_ind, cat_name in cats:
   def set_rate(proc): 
     proc.set_rate(proc.rate() * get_rate.rates["1725"] / get_rate.rates[proc.mass()])
   ch.cp().bin([cat_name]).process(sig_procs).ForEachProc(set_rate)
-
 
 # Print histograms
 def print_histogram(proc):
